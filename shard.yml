@@ -1,0 +1,9 @@
+name: CrSignals
+version: 0.1.0
+
+authors:
+  - Firejox <firejox@gmail.com>
+
+crystal: 0.31.1
+
+license: MIT
