@@ -16,14 +16,8 @@ module CrSignals
     end
 
     def emit(*args : *T)
-      {% if T.size == 1 %}
-        @slots.each &.call
-      {% else %}
-        @slots.each(&.call(args[0]
-          {% for i in 1...(T.size - 1) %}
-            ,args[{{ i }}]
-          {% end %}
-        ))
+      {% begin %}
+        @slots.each(&.call({{ (0...(T.size - 1)).map { |i| "args[#{i}]".id }.splat }}))
       {% end %}
     end
 
@@ -64,6 +58,10 @@ module CrSignals
     end
 
     def self.to_nil_return_proc(proc : *T ->)
+      yield proc
+    end
+
+    def self.to_nil_return_proc(proc : ->)
       yield proc
     end
   end

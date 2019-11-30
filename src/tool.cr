@@ -9,29 +9,36 @@ module CrSignals::Tool
               {%
                 data = CrSignals::SignalImpl::CDATA
                 counter = data[:counter]
+                args = call.args
+
+                if args.empty?
+                  call_id = call.name
+                else
+                  call_id = call.id
+                end
 
                 if signals = data[:signals]
                   if call_name_set = signals[@type.id]
                     if call_set = call_name_set[call.name]
-                      unless call_set[call.id]
-                        call_set[call.id] = {call, counter}
+                      unless call_set[call_id]
+                        call_set[call_id] = counter
                       else
                         raise "Duplicate signals defined : #{call.id}"
                       end
                     else
-                      call_name_set[call.name] = {call.id => {call, counter}}
+                      call_name_set[call.name] = {call_id => counter}
                     end
                   else
-                    signals[@type.id] = {call.name => {call.id => {call, counter}}}
+                    signals[@type.id] = {call.name => {call_id => counter}}
                   end
                 else
-                  data[:signals] = {@type.id => {call.name => {call.id => {call, counter}}}}
+                  data[:signals] = {@type.id => {call.name => {call_id => counter}}}
                 end
 
                 data[:counter] = counter + 1
               %}
 
-              @__signal_member_{{ counter }} = CrSignals::SignalImpl({{ call.args.splat }}, Nil).new
+              @__signal_member_{{ counter }} = CrSignals::SignalImpl({{ call.args.splat(",") }} Nil).new
 
             {% else %}
               {% raise "`cr_signal` cannot be used in global space." %}
@@ -76,7 +83,7 @@ module CrSignals::Tool
               {%
                 values = call_name_set.values
                 code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
-                       values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_connect(call) { " }.join(" ") +
+                       values.map { |v| "#{src.id}.@__signal_member_#{v}.try_connect(call) { " }.join(" ") +
                        "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
                        "}"
               %}
@@ -116,7 +123,7 @@ module CrSignals::Tool
               {%
                 values = call_name_set.values
                 code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
-                        values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_disconnect(call) { " }.join(" ") +
+                       values.map { |v| "#{src.id}.@__signal_member_#{v}.try_disconnect(call) { " }.join(" ") +
                        "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
                        "}"
               %}
@@ -147,7 +154,7 @@ module CrSignals::Tool
           {% if call_name_set %}
             {%
               values = call_name_set.values
-              code = values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_emit(#{args.splat}, nil) { " }.join(" ") +
+              code = values.map { |v| "#{src.id}.@__signal_member_#{v}.try_emit(#{args.splat(",")} nil) { " }.join(" ") +
                      "CrSignals::SignalImpl.no_match_argument_type(#{args.splat})" + values.map { " } " }.join(" ")
             %}
             {{ code.id }}

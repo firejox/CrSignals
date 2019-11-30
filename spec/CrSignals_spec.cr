@@ -10,6 +10,8 @@ private class TestedObject
 
   cr_signal value_change(Float64)
 
+  cr_signal clear
+
   cr_slot set_value(y : Int32) do
     if @value != y
       @value = y
@@ -22,6 +24,11 @@ private class TestedObject
       @value2 = y
       cr_sig_emit(self, TestedObject, value_change, y)
     end
+  end
+
+  def reset_all
+    @value = 0
+    @value2 = 0.0
   end
 end
 
@@ -64,5 +71,19 @@ describe CrSignals do
 
     b.value2.should eq(3.0)
     b.value.should eq(2)
+  end
+
+  it "support zero argument" do
+    a = TestedObject.new
+    b = TestedObject.new
+
+    cr_sig_connect(a, TestedObject, value_change, b.set_value(Int32))
+    cr_sig_connect(a, TestedObject, clear, b.reset_all)
+
+    a.set_value 2
+
+    b.value.should eq(2)
+    cr_sig_emit(a, TestedObject, clear)
+    b.value.should eq(0)
   end
 end
