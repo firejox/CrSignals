@@ -75,8 +75,10 @@ module CrSignals::Tool
             {% if call_name_set %}
               {%
                 values = call_name_set.values
-                code = values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_connect(#{call_arg}) { " }.join(" ") +
-                       "CrSignals::SignalImpl.no_match_proc_signal(#{call_arg})" + values.map { " } " }.join(" ")
+                code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
+                       values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_connect(call) { " }.join(" ") +
+                       "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
+                       "}"
               %}
               {{ code.id }}
             {% else %}
@@ -113,8 +115,10 @@ module CrSignals::Tool
             {% if call_name_set %}
               {%
                 values = call_name_set.values
-                code = values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_disconnect(#{call_arg}) { " }.join(" ") +
-                       "CrSignals::SignalImpl.no_match_proc_signal(#{call_arg})" + values.map { " } " }.join(" ")
+                code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
+                        values.map { |v| "#{src.id}.@__signal_member_#{v[1]}.try_disconnect(call) { " }.join(" ") +
+                       "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
+                       "}"
               %}
               {{ code.id }}
             {% else %}

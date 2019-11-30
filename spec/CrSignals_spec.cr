@@ -30,7 +30,7 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, b.set_value(Int32))
+    cr_sig_connect(a, TestedObject, value_change, ->b.value=(Int32))
 
     a.set_value(2)
     a.value.should eq(2)
@@ -41,11 +41,11 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, b.set_value(Int32))
+    cr_sig_connect(a, TestedObject, value_change, ->b.value=(Int32))
 
     a.set_value(2)
 
-    cr_sig_disconnect(a, TestedObject, value_change, b.set_value(Int32))
+    cr_sig_disconnect(a, TestedObject, value_change, ->b.value=(Int32))
 
     a.set_value(3)
     a.value.should eq(3)

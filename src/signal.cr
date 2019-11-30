@@ -62,5 +62,9 @@ module CrSignals
     def self.no_match_proc_signal(proc : Proc(*T))
       {% raise "There is no match signal for the proc restriction Proc(#{T.type_vars.splat})" %}
     end
+
+    def self.to_nil_return_proc(proc : *T ->)
+      yield proc
+    end
   end
 end
