@@ -29,10 +29,10 @@ class Foo
 
   cr_signal value_change(Int32)
 
-  cr_slot set_x(v : Int32) do
+  def set_x(v : Int32)
     if @x != v
       @x = v
-      cr_sig_emit(self, Foo, value_change, v)
+      value_change(v)
     end
   end
 end
@@ -40,12 +40,12 @@ end
 a = Foo.new
 b = Foo.new
 
-cr_sig_connect(a, Foo, value_change, b.set_x(Int32))
+a.connect_value_change(->b.set_x(Int32))
 
 a.set_x(3)
 puts b.x # => 3
 
-cr_sig_disconnect(a, Foo, value_change, b.set_x(Int32))
+a.disconnect_value_change(->b.set_x(Int32))
 
 a.set_x(4)
 puts b.x # => 3
@@ -63,14 +63,13 @@ class Foo
 
   cr_signal value_change(Int32)
 
-  cr_slot set_x(v : Float64) do
-  end
+  def set_x(v : Float64); end
 end
 
 a = Foo.new
 b = Foo.new
 
-cr_sig_connect(a, Foo, value_change, b.set_x(Float64)) # compile error
+a.connect_value_change(->b.set_x(Float64)) # compile error
 ```
 
 ## Contributing
