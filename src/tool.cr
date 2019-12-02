@@ -1,171 +1,162 @@
+require "./annotations.cr"
+
 module CrSignals::Tool
   macro included
-    {% if @type.name == "<Program>" %}
-      private macro cr_signal(call)
-        {% verbatim do %}
-          {% if call.is_a?(Call) %}
-            {% raise "The argument `#{call.id}` has receiver" if call.receiver %}
-            {% if @type != "<Program>" %}
-              {%
-                data = CrSignals::SignalImpl::CDATA
-                counter = data[:counter]
-                args = call.args
+    {% if @type.name != "<Program>" %}
+      {% raise "CrSignals::Tool should be included in global space." %}
+    {% end %}
+  end
 
-                if args.empty?
-                  call_id = call.name
-                else
-                  call_id = call.id
-                end
+  private macro crs_generate_signal_method(method_name)
+    def {{ method_name.id }}(*args : *U) forall U
+      {% verbatim do %}
+        {% begin %}
+          {%
+            signal_name = @def.name
+            vars = @type.instance_vars
+              .select { |v| (x = v.annotation(CrSignals::Signal)) && x[:call].id == signal_name }
+              .sort_by { |v| v.annotation(CrSignals::Signal)[:id] }
 
-                if signals = data[:signals]
-                  if call_name_set = signals[@type.id]
-                    if call_set = call_name_set[call.name]
-                      unless call_set[call_id]
-                        call_set[call_id] = counter
-                      else
-                        raise "Duplicate signals defined : #{call.id}"
-                      end
-                    else
-                      call_name_set[call.name] = {call_id => counter}
-                    end
-                  else
-                    signals[@type.id] = {call.name => {call_id => counter}}
-                  end
-                else
-                  data[:signals] = {@type.id => {call.name => {call_id => counter}}}
-                end
+            code = vars.map { |v| "@#{v.name}.try_emit(*args, nil) {" }.join(" ") +
+                   "CrSignals::SignalImpl.set_error " +
+                   vars.map { "}" }.join(" ")
+          %}
 
-                data[:counter] = counter + 1
-              %}
-
-              @__signal_member_{{ counter }} = CrSignals::SignalImpl({{ call.args.splat(",") }} Nil).new
-
-            {% else %}
-              {% raise "`cr_signal` cannot be used in global space." %}
-            {% end %}
-          {% else %}
-            {% raise "The argument `#{call.id}` is not a call statement" %}
-          {% end %}
+          {{ code.id }}
         {% end %}
-      end
 
-      private macro cr_slot(call)
-        {% verbatim do %}
-          def {{ call.id }} : Nil
-            {{ yield }}
-          end
-        {% end %}
-      end
-
-      private macro cr_sig_connect(src, src_path, src_call_name, target_call)
-        {% verbatim do %}
-          {% if target_call.is_a?(Call) || target_call.is_a?(ProcPointer) %}
-            {%
-              args = target_call.args
-              data = CrSignals::SignalImpl::CDATA
-
-              if src_path.is_a?(Generic)
-                src_type = src_path.name.resolve
-              else
-                src_type = src_path.resolve
-              end
-
-              if target_call.is_a?(Call)
-                call_arg = "->#{target_call.id}".id
-              else
-                call_arg = target_call.id
-              end
-
-              call_name_set = data[:signals][src_type.id][src_call_name.id]
-            %}
-
-            {% if call_name_set %}
-              {%
-                values = call_name_set.values
-                code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
-                       values.map { |v| "#{src.id}.@__signal_member_#{v}.try_connect(call) { " }.join(" ") +
-                       "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
-                       "}"
-              %}
-              {{ code.id }}
-            {% else %}
-              {% raise "There is no signal #{src_call_name.id} of type #{src_path.id}" %}
-            {% end %}
-          {% else %}
-            {% raise "Invlaid arguments" %}
-          {% end %}
-        {% end %}
-      end
-
-      private macro cr_sig_disconnect(src, src_path, src_call_name, target_call)
-        {% verbatim do %}
-          {% if target_call.is_a?(Call) || target_call.is_a?(ProcPointer) %}
-            {%
-              args = target_call.args
-              data = CrSignals::SignalImpl::CDATA
-
-              if src_path.is_a?(Generic)
-                src_type = src_path.name.resolve
-              else
-                src_type = src_path.resolve
-              end
-
-              if target_call.is_a?(Call)
-                call_arg = "->#{target_call.id}".id
-              else
-                call_arg = target_call.id
-              end
-
-              call_name_set = data[:signals][src_type.id][src_call_name.id]
-            %}
-
-            {% if call_name_set %}
-              {%
-                values = call_name_set.values
-                code = "CrSignals::SignalImpl.to_nil_return_proc(#{call_arg}) { |call| " +
-                       values.map { |v| "#{src.id}.@__signal_member_#{v}.try_disconnect(call) { " }.join(" ") +
-                       "CrSignals::SignalImpl.no_match_proc_signal(call)" + values.map { " } " }.join(" ") +
-                       "}"
-              %}
-              {{ code.id }}
-            {% else %}
-              {% raise "There is no signal #{src_call_name.id} of type #{src_path.id}" %}
-            {% end %}
-          {% else %}
-            {% raise "Invlaid arguments" %}
-          {% end %}
-        {% end %}
-      end
-
-      private macro cr_sig_emit(src, src_path, src_call_name, *args)
-        {% verbatim do %}
+        {% begin %}
           {%
             data = CrSignals::SignalImpl::CDATA
-
-            if src_path.is_a?(Generic)
-              src_type = src_path.name.resolve
-            else
-              src_type = src_path.resolve
-            end
-
-            call_name_set = data[:signals][src_type.id][src_call_name.id]
+            signal_name = @def.name
           %}
-          
-          {% if call_name_set %}
-            {%
-              values = call_name_set.values
-              code = values.map { |v| "#{src.id}.@__signal_member_#{v}.try_emit(#{args.splat(",")} nil) { " }.join(" ") +
-                     "CrSignals::SignalImpl.no_match_argument_type(#{args.splat})" + values.map { " } " }.join(" ")
-            %}
-            {{ code.id }}
-          {% else %}
-            {% raise "There is no signal #{src_call_name.id} of type #{src_path.id}" %}
-          {% end %} 
-        {% end %}
-      end
 
+          {% if data[:error] %}
+            {% @def.name.raise "#{@type.id} has no match signal #{signal_name}(#{U.type_vars.splat}) to emit" %}
+          {% end %}
+        {% end %}
+      {% end %}
+    end
+
+    def connect_{{ method_name.id }}(proc : *U ->) forall U
+      {% verbatim do %}
+        {% begin %}
+          {%
+            signal_name = @def.name[8..-1]
+            vars = @type.instance_vars
+              .select { |v| (x = v.annotation(CrSignals::Signal)) && x[:call].id == signal_name }
+              .sort_by { |v| v.annotation(CrSignals::Signal)[:id] }
+
+            code = vars.map { |v| "@#{v.name}.try_connect(proc) {" }.join(" ") +
+                   "CrSignals::SignalImpl.set_error " +
+                   vars.map { "}" }.join(" ")
+          %}
+
+          {{ code.id }}
+        {% end %}
+
+        {% begin %}
+          {%
+            data = CrSignals::SignalImpl::CDATA
+            signal_name = @def.name[8..-1]
+          %}
+
+          {% if data[:error] %}
+            {% @def.name.raise "#{@type.id} has no match signal #{signal_name}(#{U.type_vars.splat}) to connect." %}
+          {% end %}
+        {% end %}
+      {% end %}
+    end
+
+    def disconnect_{{ method_name.id }}(proc : *U ->) forall U
+      {% verbatim do %}
+        {% begin %}
+          {%
+            signal_name = @def.name[11..-1]
+            vars = @type.instance_vars
+              .select { |v| (x = v.annotation(CrSignals::Signal)) && x[:call].id == signal_name }
+              .sort_by { |v| v.annotation(CrSignals::Signal)[:id] }
+
+            code = vars.map { |v| "@#{v.name}.try_disconnect(proc) {" }.join(" ") +
+                   "CrSignals::SignalImpl.set_error " +
+                   vars.map { "}" }.join(" ")
+          %}
+
+          {{ code.id }}
+        {% end %}
+
+        {% begin %}
+          {%
+            data = CrSignals::SignalImpl::CDATA
+            signal_name = @def.name[8..-1]
+          %}
+
+          {% if data[:error] %}
+            {% @def.name.raise "#{@type.id} has no match signal #{signal_name}(#{U.type_vars.splat}) to disconnect." %}
+          {% end %}
+        {% end %}
+      {% end %}
+    end
+  end
+
+  private macro crs_signal_check_and_gen_method(method_name)
+    {%
+      data = CrSignals::SignalImpl::CDATA
+      method_exist = false
+      if signals = data[:signals]
+        method_exist = @type.ancestors.any? { |t| signals[t.id] && signals[t.id][method_name.id] }
+      end
+    %}
+
+    {% unless method_exist %}
+      crs_generate_signal_method({{ method_name }})
+    {% end %}
+  end
+
+  private macro cr_signal(call)
+    {% if call.is_a?(Call) %}
+      {% raise "The argument `#{call.id}` has receiver" if call.receiver %}
+      {% if @type != "<Program>" %}
+        crs_signal_check_and_gen_method({{ call.name }})
+        {%
+          data = CrSignals::SignalImpl::CDATA
+          counter = data[:counter]
+          args = call.args
+
+          if args.empty?
+            call_id = call.name
+          else
+            call_id = call.id
+          end
+
+          if signals = data[:signals]
+            if call_name_set = signals[@type.id]
+              if call_set = call_name_set[call.name]
+                unless call_set[call_id]
+                  call_set[call_id] = counter
+                else
+                  raise "Duplicate signals defined : #{call.id}"
+                end
+              else
+                call_name_set[call.name] = {call_id => counter}
+              end
+            else
+              signals[@type.id] = {call.name => {call_id => counter}}
+            end
+          else
+            data[:signals] = {@type.id => {call.name => {call_id => counter}}}
+          end
+
+          data[:counter] = counter + 1
+        %}
+
+        @[CrSignals::Signal(call: {{ call.name }}, id: {{ counter }})]
+        @__signal_member_{{ counter }} = CrSignals::SignalImpl({{ call.args.splat(",") }} Nil).new
+      {% else %}
+        {% raise "`cr_signal` cannot be used in global space." %}
+      {% end %}
     {% else %}
-      {% raise "CrSignals::Tool should be included in global space." %}
+      {% raise "The argument `#{call.id}` is not a call statement" %}
     {% end %}
   end
 end

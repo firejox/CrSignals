@@ -49,20 +49,11 @@ module CrSignals
       yield
     end
 
-    def self.no_match_argument_type(*args : *T)
-      {% raise "There is no match signal for the argument (#{T.type_vars.splat})" %}
-    end
-
-    def self.no_match_proc_signal(proc : Proc(*T))
-      {% raise "There is no match signal for the proc restriction Proc(#{T.type_vars.splat})" %}
-    end
-
-    def self.to_nil_return_proc(proc : *T ->)
-      yield proc
-    end
-
-    def self.to_nil_return_proc(proc : ->)
-      yield proc
+    def self.set_error
+      {%
+        data = CrSignals::SignalImpl::CDATA
+        data[:error] = true
+      %}
     end
   end
 end

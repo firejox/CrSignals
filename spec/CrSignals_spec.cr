@@ -12,17 +12,17 @@ private class TestedObject
 
   cr_signal clear
 
-  cr_slot set_value(y : Int32) do
+  def set_value(y : Int32)
     if @value != y
       @value = y
-      cr_sig_emit(self, TestedObject, value_change, y)
+      value_change(y)
     end
   end
 
-  cr_slot set_value(y : Float64) do
+  def set_value(y : Float64)
     if @value2 != y
       @value2 = y
-      cr_sig_emit(self, TestedObject, value_change, y)
+      value_change(y)
     end
   end
 
@@ -37,7 +37,7 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, ->b.value=(Int32))
+    a.connect_value_change(->b.value=(Int32))
 
     a.set_value(2)
     a.value.should eq(2)
@@ -48,11 +48,11 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, ->b.value=(Int32))
+    a.connect_value_change(->b.value=(Int32))
 
     a.set_value(2)
 
-    cr_sig_disconnect(a, TestedObject, value_change, ->b.value=(Int32))
+    a.disconnect_value_change(->b.value=(Int32))
 
     a.set_value(3)
     a.value.should eq(3)
@@ -63,8 +63,8 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, b.set_value(Int32))
-    cr_sig_connect(a, TestedObject, value_change, b.set_value(Float64))
+    a.connect_value_change(->b.set_value(Int32))
+    a.connect_value_change(->b.set_value(Float64))
 
     a.set_value(2)
     a.set_value(3.0)
@@ -77,13 +77,13 @@ describe CrSignals do
     a = TestedObject.new
     b = TestedObject.new
 
-    cr_sig_connect(a, TestedObject, value_change, b.set_value(Int32))
-    cr_sig_connect(a, TestedObject, clear, b.reset_all)
+    a.connect_value_change(->b.set_value(Int32))
+    a.connect_clear(->b.reset_all)
 
     a.set_value 2
 
     b.value.should eq(2)
-    cr_sig_emit(a, TestedObject, clear)
+    a.clear
     b.value.should eq(0)
   end
 end
