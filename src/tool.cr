@@ -88,7 +88,7 @@ module CrSignals::Tool
         {% begin %}
           {%
             data = CrSignals::SignalImpl::CDATA
-            signal_name = @def.name[8..-1]
+            signal_name = @def.name[11..-1]
           %}
 
           {% if data[:error] %}
