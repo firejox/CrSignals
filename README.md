@@ -1,4 +1,4 @@
-# CrSignals
+# CrSignals ![](https://github.com/firejox/CrSignals/workflows/Crystal%20CI/badge.svg?branch=master)
 
 CrSignals is a signals/slots library. You can define your signal/slot function, wire them and emit data.
 
