@@ -1,4 +1,5 @@
 require "./tool.cr"
+require "./generator.cr"
 require "./signal.cr"
 
 module CrSignals
