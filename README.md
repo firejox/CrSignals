@@ -21,10 +21,9 @@ CrSignals is a signals/slots library. You can define your signal/slot function, 
 ```crystal
 require "CrSignals"
 
-# this must be included when you use in each file
-include CrSignals::Tool
-
 class Foo
+  include CrSignals::Generator
+  
   property x : Int32 = 0
 
   cr_signal value_change(Int32)
@@ -56,9 +55,9 @@ puts b.x # => 3
 ```crystal
 require "CrSignals"
 
-include CrSignals::Tool
-
 class Foo
+  include CrSignals::Generator
+
   property x : Int32 = 0
 
   cr_signal value_change(Int32)

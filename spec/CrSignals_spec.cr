@@ -1,8 +1,8 @@
 require "./spec_helper"
 
-include CrSignals::Tool
-
 private class TestedObject
+  include CrSignals::Generator
+
   property value : Int32 = 0
   property value2 : Float64 = 0.0
 
